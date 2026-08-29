@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { compensationSchema, normalizeCompanyName } from "@/lib/validation";
+import { compensationSchema, normalizeCompanyName, normalizeDisplayText, normalizeLevel } from "@/lib/validation";
 
 function boundedInteger(value: string | null, fallback: number, max: number) {
   const parsed = Number(value);
@@ -11,16 +11,18 @@ function boundedInteger(value: string | null, fallback: number, max: number) {
 
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
-  const q = params.get("q")?.trim();
-  const level = params.get("level")?.trim();
-  const location = params.get("location")?.trim();
+  const q = params.get("q") ? normalizeDisplayText(params.get("q")!) : undefined;
+  const requestedLevel = params.get("level");
+  const level = requestedLevel ? normalizeLevel(requestedLevel) : undefined;
+  const location = params.get("location") ? normalizeDisplayText(params.get("location")!) : undefined;
+  if (requestedLevel && !level) return NextResponse.json({ error: "Unsupported level filter." }, { status: 400 });
   const page = boundedInteger(params.get("page"), 1, 10_000);
   const take = boundedInteger(params.get("take"), 15, 50);
   const sortValue = params.get("sort");
   const orderBy = sortValue === "recent" ? { createdAt: "desc" as const } : sortValue === "baseSalary" ? { baseSalary: "desc" as const } : { totalComp: "desc" as const };
   const where: Prisma.CompensationWhereInput = {
-    ...(q ? { OR: [{ role: { contains: q, mode: "insensitive" } }, { company: { name: { contains: q, mode: "insensitive" } } }] } : {}),
-    ...(level ? { level } : {}),
+    ...(q ? { OR: [{ role: { contains: q, mode: "insensitive" } }, { company: { name: { contains: q, mode: "insensitive" } } }, { company: { normalizedName: { contains: normalizeCompanyName(q) } } }] } : {}),
+    ...(level ? { levelKey: level.toLowerCase() } : {}),
     ...(location ? { location: { contains: location, mode: "insensitive" } } : {}),
   };
   const [data, total] = await prisma.$transaction([
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "Please sign in before submitting compensation." }, { status: 401 });
     const value = parsed.data;
     const company = await prisma.company.upsert({ where: { normalizedName: normalizeCompanyName(value.company) }, create: { name: value.company, normalizedName: normalizeCompanyName(value.company) }, update: {} });
-    const record = await prisma.compensation.create({ data: { ...value, company: { connect: { id: company.id } }, user: { connect: { id: user.id } } } });
+    const record = await prisma.compensation.create({ data: { ...value, levelKey: value.level.toLowerCase(), company: { connect: { id: company.id } }, user: { connect: { id: user.id } } } });
     return NextResponse.json({ data: record }, { status: 201 });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return NextResponse.json({ error: "This compensation entry already exists." }, { status: 409 });

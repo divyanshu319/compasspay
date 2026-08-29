@@ -29,6 +29,7 @@ model Compensation {
   userId String?
   role String
   level String
+  levelKey String
   location String
   currency String @default("USD")
   baseSalary Int
@@ -42,6 +43,7 @@ model Compensation {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   @@unique([companyId, role, level, location, baseSalary, bonus, stock])
   @@index([role, level, location])
+  @@index([levelKey])
   @@index([totalComp])
   @@index([companyId, totalComp])
   @@index([createdAt])
