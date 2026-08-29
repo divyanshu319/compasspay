@@ -1,0 +1,23 @@
+# dependencies and framework output
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+
+# local environment and deployment metadata
+.env
+.env.*
+!.env.example
+.vercel/
+
+# logs and local tooling files
+*.log
+*.tsbuildinfo
+.DS_Store
+*.pem
+
+# local Prisma databases
+prisma/*.db
+prisma/*.db-journal

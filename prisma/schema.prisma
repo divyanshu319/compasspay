@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  name String
+  passwordHash String
+  createdAt DateTime @default(now())
+  submissions Compensation[]
+}
+model Company {
+  id String @id @default(cuid())
+  name String @unique
+  normalizedName String @unique
+  logoText String?
+  industry String?
+  createdAt DateTime @default(now())
+  compensations Compensation[]
+}
+model Compensation {
+  id String @id @default(cuid())
+  companyId String
+  userId String?
+  role String
+  level String
+  location String
+  currency String @default("USD")
+  baseSalary Int
+  bonus Int @default(0)
+  stock Int @default(0)
+  totalComp Int
+  yearsExperience Float?
+  isVerified Boolean @default(false)
+  createdAt DateTime @default(now())
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@unique([companyId, role, level, location, baseSalary, bonus, stock])
+  @@index([role, level, location])
+  @@index([totalComp])
+  @@index([companyId, totalComp])
+  @@index([createdAt])
+}
