@@ -1,1 +1,3 @@
-import { NextResponse } from "next/server"; export async function POST(){const r=NextResponse.json({ok:true});r.cookies.set("compass_session","",{path:"/",maxAge:0});return r;}
+import { NextResponse } from "next/server";
+import { clearedSessionCookie } from "@/lib/auth";
+export async function POST() { const response = NextResponse.json({ ok: true }); response.cookies.set(clearedSessionCookie()); return response; }
